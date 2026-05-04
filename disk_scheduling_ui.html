@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hospital Disk Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #080c10;
+  --bg2: #0d1219;
+  --bg3: #111820;
+  --panel: #0f1822;
+  --border: rgba(0,200,180,0.12);
+  --border2: rgba(0,200,180,0.25);
+  --accent: #00c8b4;
+  --accent2: #00e5cc;
+  --accent-dim: rgba(0,200,180,0.08);
+  --red: #ff4e6a;
+  --amber: #ffb340;
+  --blue: #4d9fff;
+  --purple: #a78bfa;
+  --text: #e8eef5;
+  --text2: #7a9ab5;
+  --text3: #3d5a70;
+  --mono: 'Space Mono', monospace;
+  --sans: 'Syne', sans-serif;
+  --glow: 0 0 20px rgba(0,200,180,0.3);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,200,180,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,180,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrapper{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:32px 20px 60px;}
+header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:40px;gap:20px;flex-wrap:wrap;}
+.header-left{flex:1;min-width:200px;}
+.header-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--border2);border-radius:2px;padding:4px 10px;margin-bottom:12px;letter-spacing:.08em;}
+.dot-pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+h1{font-size:clamp(26px,4vw,42px);font-weight:800;line-height:1.1;color:#fff;letter-spacing:-.02em;}
+h1 span{color:var(--accent);}
+.header-sub{margin-top:10px;font-size:13px;color:var(--text2);font-family:var(--mono);line-height:1.7;}
+.header-stats{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}
+.hstat{text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 20px;}
+.hstat-n{font-size:22px;font-weight:800;color:var(--accent);font-family:var(--mono);}
+.hstat-l{font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;}
+.main-grid{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;}
+@media(max-width:760px){.main-grid{grid-template-columns:1fr;}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;margin-bottom:18px;}
+.panel:hover{border-color:var(--border2);}
+.panel:last-child{margin-bottom:0;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2);}
+.panel-title{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-family:var(--mono);}
+.panel-body{padding:18px;}
+.algo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.algo-btn{position:relative;overflow:hidden;padding:11px 8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;text-align:center;font-family:var(--mono);color:var(--text2);}
+.algo-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--accent-dim),transparent);opacity:0;transition:opacity .2s;}
+.algo-btn:hover{border-color:var(--border2);color:var(--text);}
+.algo-btn:hover::before{opacity:1;}
+.algo-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,200,180,0.06);box-shadow:0 0 12px rgba(0,200,180,0.12);}
+.algo-btn.active::before{opacity:1;}
+.algo-name{font-size:13px;font-weight:700;display:block;}
+.algo-full{font-size:9px;letter-spacing:.05em;opacity:.6;display:block;margin-top:2px;text-transform:uppercase;}
+.algo-desc-box{background:rgba(0,200,180,0.05);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:12px;line-height:1.7;color:var(--text2);font-family:var(--mono);margin-bottom:16px;min-height:58px;transition:all .2s;}
+.input-group{margin-bottom:13px;}
+.input-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:6px;display:block;}
+.inp{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;transition:border-color .2s,box-shadow .2s;outline:none;}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,180,0.1);}
+.input-hint{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px;}
+.error-msg{color:var(--red);font-size:11px;font-family:var(--mono);margin-top:6px;display:none;}
+.run-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:#000;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .2s;position:relative;overflow:hidden;margin-top:4px;}
+.run-btn::after{content:'';position:absolute;top:-50%;left:-60%;width:60%;height:200%;background:rgba(255,255,255,.25);transform:skewX(-20deg);transition:left .4s;}
+.run-btn:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:var(--glow);}
+.run-btn:hover::after{left:120%;}
+.run-btn:active{transform:translateY(0);}
+.right-col{display:flex;flex-direction:column;gap:18px;}
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:600px){.metrics-row{grid-template-columns:repeat(2,1fr);}}
+.metric-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px 13px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s;}
+.metric-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.metric-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.mc-green::before{background:var(--accent);}
+.mc-amber::before{background:var(--amber);}
+.mc-red::before{background:var(--red);}
+.mc-blue::before{background:var(--blue);}
+.metric-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;}
+.metric-value{font-size:24px;font-weight:800;font-family:var(--mono);color:#fff;line-height:1;}
+.metric-unit{font-size:10px;color:var(--text3);margin-top:4px;font-family:var(--mono);}
+#disk-canvas{width:100%;display:block;border-radius:6px;cursor:crosshair;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--text3);text-align:center;}
+.empty-icon{font-size:40px;opacity:.25;}
+.empty-text{font-family:var(--mono);font-size:12px;line-height:1.9;}
+.seq-wrap{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.seq-pill{font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 9px;border-radius:4px;border:1px solid;}
+.ph{background:rgba(255,78,106,.1);border-color:rgba(255,78,106,.4);color:var(--red);}
+.pn{background:rgba(0,200,180,.06);border-color:rgba(0,200,180,.2);color:var(--accent);}
+.pv{background:rgba(13,18,25,1);border-color:rgba(61,90,112,.35);color:var(--text2);}
+.seq-arrow{color:var(--text3);font-size:11px;}
+.cmp-list{display:flex;flex-direction:column;gap:8px;}
+.cmp-row{display:grid;grid-template-columns:68px 1fr 78px 56px;align-items:center;gap:10px;padding:10px 13px;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;transition:all .2s;}
+.cmp-row:hover{border-color:var(--border2);}
+.cmp-row.cmp-active{border-color:var(--accent);background:rgba(0,200,180,.04);}
+.cmp-row.cmp-best{border-color:rgba(255,179,64,.3);}
+.cmp-algo{font-family:var(--mono);font-size:12px;font-weight:700;}
+.cmp-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
+.cmp-bar{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+.cmp-val{font-family:var(--mono);font-size:11px;color:var(--text2);text-align:right;}
+.cmp-badge{font-size:9px;padding:2px 7px;border-radius:3px;font-family:var(--mono);letter-spacing:.06em;text-align:center;font-weight:700;}
+.badge-best{background:rgba(255,179,64,.15);color:var(--amber);border:1px solid rgba(255,179,64,.3);}
+.badge-cur{background:rgba(0,200,180,.1);color:var(--accent);border:1px solid rgba(0,200,180,.2);}
+.badge-empty{visibility:hidden;}
+#tooltip{position:fixed;pointer-events:none;background:rgba(13,18,25,.96);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--accent);display:none;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.anim-in{animation:slideUp .3s ease both;}
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.footer-tag{color:var(--accent);}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--text3);border-radius:2px;}
+</style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div class="wrapper">
+
+  <header>
+    <div class="header-left">
+      <div class="header-tag"><span class="dot-pulse"></span>SYSTEM ACTIVE</div>
+      <h1>Hospital <span>Disk</span><br>Scheduler</h1>
+      <p class="header-sub">// Patient record access optimization<br>// OS disk scheduling simulation</p>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-n">6</div><div class="hstat-l">Algorithms</div></div>
+      <div class="hstat"><div class="hstat-n" id="hs-reqs">8</div><div class="hstat-l">Requests</div></div>
+      <div class="hstat"><div class="hstat-n" id="hs-best">—</div><div class="hstat-l">Best Algo</div></div>
+    </div>
+  </header>
+
+  <div class="main-grid">
+    <!-- LEFT -->
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">// Algorithm</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--accent)" id="algo-badge">FCFS</span>
+        </div>
+        <div class="panel-body">
+          <div class="algo-grid">
+            <button class="algo-btn active" onclick="setAlgo('FCFS')" data-algo="FCFS"><span class="algo-name">FCFS</span><span class="algo-full">First Come First</span></button>
+            <button class="algo-btn" onclick="setAlgo('SSTF')" data-algo="SSTF"><span class="algo-name">SSTF</span><span class="algo-full">Shortest Seek</span></button>
+            <button class="algo-btn" onclick="setAlgo('SCAN')" data-algo="SCAN"><span class="algo-name">SCAN</span><span class="algo-full">Elevator</span></button>
+            <button class="algo-btn" onclick="setAlgo('C-SCAN')" data-algo="C-SCAN"><span class="algo-name">C-SCAN</span><span class="algo-full">Circular Scan</span></button>
+            <button class="algo-btn" onclick="setAlgo('LOOK')" data-algo="LOOK"><span class="algo-name">LOOK</span><span class="algo-full">Smart Elevator</span></button>
+            <button class="algo-btn" onclick="setAlgo('C-LOOK')" data-algo="C-LOOK"><span class="algo-name">C-LOOK</span><span class="algo-full">Circular Look</span></button>
+          </div>
+          <div class="algo-desc-box" id="algo-desc">Serves disk requests in the order they arrive. Simple to implement but causes excessive head movement. Not recommended for high-load hospital systems.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">// Parameters</span></div>
+        <div class="panel-body">
+          <div class="input-group">
+            <label class="input-label">Disk Cylinders</label>
+            <input class="inp" type="number" id="disk-size" value="200" min="10" max="2000"/>
+            <div class="input-hint">Total number of disk cylinders</div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Initial Head Position</label>
+            <input class="inp" type="number" id="head-pos" value="53" min="0"/>
+            <div class="input-hint">Current read/write head location</div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Patient Record Request Queue</label>
+            <input class="inp" type="text" id="req-queue" value="98,183,37,122,14,124,65,67"/>
+            <div class="input-hint">Cylinder numbers, comma-separated</div>
+            <div class="error-msg" id="err-msg"></div>
+          </div>
+          <button class="run-btn" onclick="runScheduler()">&#9654;&nbsp; RUN SIMULATION</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+      <div class="metrics-row">
+        <div class="metric-card mc-green"><div class="metric-label">Total Movement</div><div class="metric-value" id="m-total">—</div><div class="metric-unit">cylinders</div></div>
+        <div class="metric-card mc-amber"><div class="metric-label">Avg Seek Time</div><div class="metric-value" id="m-avg">—</div><div class="metric-unit">cyl / request</div></div>
+        <div class="metric-card mc-red"><div class="metric-label">Max Seek</div><div class="metric-value" id="m-max">—</div><div class="metric-unit">cylinders</div></div>
+        <div class="metric-card mc-blue"><div class="metric-label">Min Seek</div><div class="metric-value" id="m-min">—</div><div class="metric-unit">cylinders</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">// Head Movement Visualization</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)" id="canvas-label"></span>
+        </div>
+        <div class="panel-body" style="padding:12px;">
+          <div id="canvas-empty" class="empty-state"><div class="empty-icon">&#9678;</div><div class="empty-text">Run a simulation to see<br>the disk head movement pattern</div></div>
+          <canvas id="disk-canvas" style="display:none" height="240"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">// Service Sequence</span>
+          <span id="seq-count" style="font-family:var(--mono);font-size:10px;color:var(--text3)"></span>
+        </div>
+        <div class="panel-body">
+          <div id="seq-wrap" class="seq-wrap"><span style="color:var(--text3);font-family:var(--mono);font-size:12px">No simulation run yet.</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">// All Algorithms Comparison</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">ranked by efficiency</span>
+        </div>
+        <div class="panel-body">
+          <div id="cmp-list" class="cmp-list"><span style="color:var(--text3);font-family:var(--mono);font-size:12px">Run a simulation to compare all algorithms.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="footer-tag">Hospital_Data_Access_Optimization</span>
+    <span>OS Disk Scheduling Mini Project</span>
+    <span>FCFS &middot; SSTF &middot; SCAN &middot; C-SCAN &middot; LOOK &middot; C-LOOK</span>
+  </footer>
+</div>
+
+<script>
+const DESCS = {
+  FCFS:   'Serves disk requests in the order they arrive. Simple to implement but causes excessive head movement. Not recommended for high-load hospital record systems.',
+  SSTF:   'Shortest Seek Time First: always picks the nearest cylinder request. Minimizes individual seek times but may cause starvation for distant patient records.',
+  SCAN:   'Elevator algorithm: head sweeps to disk boundary and reverses, servicing all requests. Good for evenly distributed hospital records across the disk.',
+  'C-SCAN':'Circular SCAN: sweeps one direction only, jumps back to start. Provides uniform access times — ideal when fairness between patients is critical.',
+  LOOK:   'Like SCAN but reverses at the last pending request instead of the disk edge. More efficient than SCAN for real hospital workloads.',
+  'C-LOOK':'Best balance: sweeps right, jumps to lowest pending request. Reduces unnecessary traversal — recommended for most hospital database systems.'
+};
+const COLORS = {
+  FCFS:'#4d9fff', SSTF:'#00c8b4', SCAN:'#ffb340',
+  'C-SCAN':'#ff4e6a', LOOK:'#a78bfa', 'C-LOOK':'#00e5cc'
+};
+let currentAlgo = 'FCFS', lastParams = null;
+
+function setAlgo(algo) {
+  currentAlgo = algo;
+  document.querySelectorAll('.algo-btn').forEach(b => b.classList.toggle('active', b.dataset.algo === algo));
+  document.getElementById('algo-desc').textContent = DESCS[algo];
+  document.getElementById('algo-badge').textContent = algo;
+  if (lastParams) runScheduler();
+}
+
+function fcfs(head, reqs) {
+  let seq=[head],pos=head,total=0,moves=[];
+  for(let r of reqs){let d=Math.abs(r-pos);moves.push(d);total+=d;pos=r;seq.push(r);}
+  return {seq,total,moves};
+}
+function sstf(head, reqs) {
+  let rem=[...reqs],seq=[head],pos=head,total=0,moves=[];
+  while(rem.length){
+    let idx=0,md=Math.abs(rem[0]-pos);
+    rem.forEach((r,i)=>{let d=Math.abs(r-pos);if(d<md){md=d;idx=i;}});
+    moves.push(md);total+=md;pos=rem[idx];seq.push(pos);rem.splice(idx,1);
+  }
+  return {seq,total,moves};
+}
+function scan(head, reqs, ds) {
+  let L=reqs.filter(r=>r<head).sort((a,b)=>b-a);
+  let R=reqs.filter(r=>r>=head).sort((a,b)=>a-b);
+  let seq=[head],pos=head,total=0,moves=[];
+  const go=T=>{for(let t of T){let d=Math.abs(t-pos);moves.push(d);total+=d;pos=t;seq.push(t);}};
+  go(R);
+  if(pos<ds-1){let d=ds-1-pos;moves.push(d);total+=d;pos=ds-1;seq.push(pos);}
+  go(L);
+  return {seq,total,moves};
+}
+function cscan(head, reqs, ds) {
+  let L=reqs.filter(r=>r<head).sort((a,b)=>a-b);
+  let R=reqs.filter(r=>r>=head).sort((a,b)=>a-b);
+  let seq=[head],pos=head,total=0,moves=[];
+  const go=T=>{for(let t of T){let d=Math.abs(t-pos);moves.push(d);total+=d;pos=t;seq.push(t);}};
+  go(R);
+  if(L.length){let j=(ds-1-pos)+(ds-1);moves.push(j);total+=j;pos=0;seq.push(ds-1,0);go(L);}
+  return {seq,total,moves};
+}
+function look(head, reqs) {
+  let L=reqs.filter(r=>r<head).sort((a,b)=>b-a);
+  let R=reqs.filter(r=>r>=head).sort((a,b)=>a-b);
+  let seq=[head],pos=head,total=0,moves=[];
+  const go=T=>{for(let t of T){let d=Math.abs(t-pos);moves.push(d);total+=d;pos=t;seq.push(t);}};
+  go(R);go(L);
+  return {seq,total,moves};
+}
+function clook(head, reqs) {
+  let L=reqs.filter(r=>r<head).sort((a,b)=>a-b);
+  let R=reqs.filter(r=>r>=head).sort((a,b)=>a-b);
+  let seq=[head],pos=head,total=0,moves=[];
+  const go=T=>{for(let t of T){let d=Math.abs(t-pos);moves.push(d);total+=d;pos=t;seq.push(t);}};
+  go(R);
+  if(L.length){let j=Math.abs(pos-L[0]);moves.push(j);total+=j;pos=L[0];seq.push(pos);go(L.slice(1));}
+  return {seq,total,moves};
+}
+function runAlgo(algo,head,reqs,ds) {
+  if(algo==='FCFS')   return fcfs(head,reqs);
+  if(algo==='SSTF')   return sstf(head,reqs);
+  if(algo==='SCAN')   return scan(head,reqs,ds);
+  if(algo==='C-SCAN') return cscan(head,reqs,ds);
+  if(algo==='LOOK')   return look(head,reqs);
+  if(algo==='C-LOOK') return clook(head,reqs);
+}
+
+function runScheduler() {
+  const errEl = document.getElementById('err-msg');
+  errEl.style.display = 'none';
+  const ds = parseInt(document.getElementById('disk-size').value)||200;
+  const head = parseInt(document.getElementById('head-pos').value);
+  const raw = document.getElementById('req-queue').value;
+  const reqs = raw.split(/[,\s]+/).map(Number).filter(n=>!isNaN(n)&&n>=0);
+  if(reqs.length<2){errEl.textContent='Enter at least 2 request cylinders';errEl.style.display='block';return;}
+  if(isNaN(head)||head<0||head>=ds){errEl.textContent='Head must be 0 to '+(ds-1);errEl.style.display='block';return;}
+  if(reqs.some(r=>r>=ds)){errEl.textContent='All requests must be < '+ds;errEl.style.display='block';return;}
+  lastParams={head,reqs,ds};
+  const res = runAlgo(currentAlgo,head,reqs,ds);
+  setMetrics(res);
+  drawCanvas(res.seq,ds,currentAlgo);
+  drawSeq(res.seq);
+  drawCmp(head,reqs,ds);
+  document.getElementById('hs-reqs').textContent=reqs.length;
+}
+
+function setMetrics({total,moves}) {
+  document.getElementById('m-total').textContent=total;
+  document.getElementById('m-avg').textContent=(total/moves.length).toFixed(1);
+  document.getElementById('m-max').textContent=Math.max(...moves);
+  document.getElementById('m-min').textContent=Math.min(...moves);
+}
+
+function drawCanvas(seq,ds,algo) {
+  document.getElementById('canvas-empty').style.display='none';
+  document.getElementById('canvas-label').textContent=algo;
+  const canvas=document.getElementById('disk-canvas');
+  canvas.style.display='block';
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth-24;
+  const H=240;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const PL=48,PR=16,PT=20,PB=34;
+  const gW=W-PL-PR,gH=H-PT-PB;
+  const xOf=c=>PL+(c/(ds-1))*gW;
+  const yOf=i=>PT+(i/(seq.length-1))*gH;
+  const col=COLORS[algo];
+  ctx.clearRect(0,0,W,H);
+  [0,25,50,75,100].forEach(p=>{
+    const c=Math.round(p/100*(ds-1)),x=xOf(c);
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,PT);ctx.lineTo(x,PT+gH);ctx.stroke();
+    ctx.fillStyle='rgba(122,154,181,0.55)';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText(c,x,H-10);
+  });
+  ctx.textAlign='right';ctx.font='9px Space Mono,monospace';
+  for(let i=0;i<seq.length;i++){
+    ctx.fillStyle=i===0?'rgba(255,78,106,0.7)':'rgba(122,154,181,0.45)';
+    ctx.fillText(i===0?'HEAD':'R'+i,PL-5,yOf(i)+3);
+  }
+  // Glow
+  ctx.shadowColor=col;ctx.shadowBlur=14;
+  ctx.strokeStyle=col+'44';ctx.lineWidth=7;ctx.lineJoin='round';
+  ctx.beginPath();
+  for(let i=0;i<seq.length;i++) i===0?ctx.moveTo(xOf(seq[i]),yOf(i)):ctx.lineTo(xOf(seq[i]),yOf(i));
+  ctx.stroke();
+  // Line
+  ctx.shadowBlur=0;ctx.strokeStyle=col;ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<seq.length;i++) i===0?ctx.moveTo(xOf(seq[i]),yOf(i)):ctx.lineTo(xOf(seq[i]),yOf(i));
+  ctx.stroke();
+  // Move labels
+  for(let i=1;i<seq.length;i++){
+    const mx=(xOf(seq[i-1])+xOf(seq[i]))/2,my=(yOf(i-1)+yOf(i))/2;
+    ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='8px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText(Math.abs(seq[i]-seq[i-1]),mx+3,my-5);
+  }
+  // Dots
+  for(let i=0;i<seq.length;i++){
+    const x=xOf(seq[i]),y=yOf(i);
+    const dc=i===0?'#ff4e6a':i===seq.length-1?'#ffb340':col;
+    ctx.shadowColor=dc;ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(x,y,i===0?6:4,0,Math.PI*2);
+    ctx.fillStyle=dc;ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle='#080c10';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.65)';ctx.font='10px Space Mono,monospace';ctx.textAlign='left';
+    ctx.fillText(seq[i],x+8,y+4);
+  }
+  // Tooltip
+  canvas.onmousemove=e=>{
+    const r=canvas.getBoundingClientRect();
+    const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+    let found=false;
+    for(let i=0;i<seq.length;i++){
+      if(Math.hypot(mx-xOf(seq[i]),my-yOf(i))<12){
+        const t=document.getElementById('tooltip');
+        t.style.display='block';t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-8)+'px';
+        t.innerHTML='Cylinder: <b>'+seq[i]+'</b><br>'+(i===0?'Initial head':'Step '+i+(i>0?' &mdash; moved '+Math.abs(seq[i]-seq[i-1])+' cyl':''));
+        found=true;break;
+      }
+    }
+    if(!found)document.getElementById('tooltip').style.display='none';
+  };
+  canvas.onmouseleave=()=>document.getElementById('tooltip').style.display='none';
+}
+
+function drawSeq(seq) {
+  document.getElementById('seq-count').textContent=seq.length+' steps';
+  const wrap=document.getElementById('seq-wrap');
+  wrap.innerHTML='';
+  seq.forEach((s,i)=>{
+    if(i>0){const a=document.createElement('span');a.className='seq-arrow';a.textContent='→';wrap.appendChild(a);}
+    const p=document.createElement('span');
+    p.className='seq-pill '+(i===0?'ph':i===seq.length-1?'pn':'pv');
+    p.textContent=s;wrap.appendChild(p);
+  });
+}
+
+function drawCmp(head,reqs,ds) {
+  const algos=['FCFS','SSTF','SCAN','C-SCAN','LOOK','C-LOOK'];
+  const res=algos.map(a=>({algo:a,total:runAlgo(a,head,reqs,ds).total}));
+  const maxT=Math.max(...res.map(r=>r.total));
+  const minT=Math.min(...res.map(r=>r.total));
+  res.sort((a,b)=>a.total-b.total);
+  const list=document.getElementById('cmp-list');list.innerHTML='';
+  res.forEach(r=>{
+    const pct=Math.round((r.total/maxT)*100);
+    const isBest=r.total===minT,isCur=r.algo===currentAlgo;
+    const row=document.createElement('div');
+    row.className='cmp-row'+(isCur?' cmp-active':'')+(isBest&&!isCur?' cmp-best':'');
+    const badge=isBest?'<span class="cmp-badge badge-best">&#9733; BEST</span>':isCur?'<span class="cmp-badge badge-cur">ACTIVE</span>':'<span class="cmp-badge badge-empty">—</span>';
+    row.innerHTML=`<span class="cmp-algo" style="color:${COLORS[r.algo]}">${r.algo}</span><div class="cmp-bar-wrap"><div class="cmp-bar" style="width:${pct}%;background:${COLORS[r.algo]}"></div></div><span class="cmp-val">${r.total} cyl</span>${badge}`;
+    list.appendChild(row);
+  });
+  document.getElementById('hs-best').textContent=res[0].algo;
+}
+
+window.onload=()=>runScheduler();
+</script>
+</body>
+</html>
